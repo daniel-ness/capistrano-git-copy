@@ -86,6 +86,7 @@ module Capistrano
       #
       # @return void
       def prepare_release
+        exclude_files_from_archive if fetch(:git_excludes, []).count > 0
         if fetch(:upload_path) != '.'
           backend.execute(:tar, '-czf', archive_path, '-C', fetch(:upload_path), '.')
         elsif fetch(:with_submodules)
@@ -93,8 +94,6 @@ module Capistrano
         else
           git(:archive, '--format=tar', 'HEAD', '|', 'gzip', "> #{archive_path}")
         end
-
-        exclude_files_from_archive if fetch(:git_excludes, []).count > 0
       end
 
       # Upload and extract release
