@@ -86,14 +86,25 @@ module Capistrano
       #
       # @return void
       def prepare_release
-        exclude_files_from_archive if fetch(:git_excludes, []).count > 0
-        if fetch(:upload_path) != '.'
-          backend.execute(:tar, '-czf', archive_path, '-C', fetch(:upload_path), '.')
-        elsif fetch(:with_submodules)
-          backend.execute(git_archive_all_bin, "--prefix=''", archive_path)
-        else
-          git(:archive, '--format=tar', 'HEAD', '|', 'gzip', "> #{archive_path}")
+        archive_dir = File.join(tmp_path, 'archive')
+
+        backend.execute(:rm, '-rf', archive_dir)
+        backend.execute(:mkdir, '-p', archive_dir)
+        backend.execute(:tar, '-xzf', archive_path, '-C', archive_dir)
+
+        fetch(:git_excludes, []).each do |f|
+          file_path = File.join(archive_dir, f.gsub(/\A\//, ''))
+
+          unless File.exists?(file_path)
+            backend.warn("#{f} does not exists!")
+
+            next
+          end
+
+          FileUtils.rm_rf(file_path)
         end
+
+        backend.execute(:tar, '-czf', archive_path, '-C', archive_dir, '.')
       end
 
       # Upload and extract release
@@ -180,25 +191,7 @@ module Capistrano
       end
 
       def exclude_files_from_archive
-        archive_dir = File.join(tmp_path, 'archive')
 
-        backend.execute(:rm, '-rf', archive_dir)
-        backend.execute(:mkdir, '-p', archive_dir)
-        backend.execute(:tar, '-xzf', archive_path, '-C', archive_dir)
-
-        fetch(:git_excludes, []).each do |f|
-          file_path = File.join(archive_dir, f.gsub(/\A\//, ''))
-
-          unless File.exists?(file_path)
-            backend.warn("#{f} does not exists!")
-
-            next
-          end
-
-          FileUtils.rm_rf(file_path)
-        end
-
-        backend.execute(:tar, '-czf', archive_path, '-C', archive_dir, '.')
       end
     end
   end
