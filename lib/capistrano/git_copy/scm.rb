@@ -86,6 +86,9 @@ module Capistrano
       #
       # @return void
       def prepare_release
+        
+        backend.execute(:tar, '-czf', archive_path, '-C', fetch(:upload_path), '.')
+        
         archive_dir = File.join(tmp_path, 'archive')
 
         backend.execute(:rm, '-rf', archive_dir)
